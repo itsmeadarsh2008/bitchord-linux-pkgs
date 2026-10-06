@@ -14,12 +14,10 @@ import os
 import shutil
 import subprocess
 import sys
-import tarfile
-import io
 
 
-def run(*args):
-    return subprocess.run(args, check=True, capture_output=True)
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, capture_output=True, **kwargs)
 
 
 def bsdtar_list(deb):
@@ -27,31 +25,43 @@ def bsdtar_list(deb):
     return p.stdout.decode().splitlines()
 
 
-def bsdtar_extract(deb, member):
-    p = run("bsdtar", "-O", "-xf", deb, member)
-    return p.stdout
-
-
 def get_control(deb_path):
+    """Extract debian/control text using bsdtar only (handles any
+    control.tar compression incl. zstd, which python-tarfile can't)."""
     members = bsdtar_list(deb_path)
     ctrl = next((m for m in members if m.startswith("control.tar")), None)
     if ctrl is None:
         raise ValueError(f"{deb_path}: no control.tar.* member")
-    data = bsdtar_extract(deb_path, ctrl)
-    if data[:2] == b"\x1f\x8b":
-        mode = "r:gz"
-    elif data[:3] == b"BZh":
-        mode = "r:bz2"
-    elif data[:6] == b"\xfd7zXZ\x00":
-        mode = "r:xz"
-    else:
-        mode = "r:"
-    with tarfile.open(fileobj=io.BytesIO(data), mode=mode) as tf:
-        for m in tf.getmembers():
-            if m.name in ("control", "./control"):
-                f = tf.extractfile(m)
-                return f.read().decode("utf-8", "replace")
-    raise ValueError(f"{deb_path}: no control file inside {ctrl}")
+    p1 = subprocess.Popen(
+        ["bsdtar", "-O", "-xf", deb_path, ctrl], stdout=subprocess.PIPE
+    )
+    try:
+        # bsdtar reads the (possibly compressed) tar from stdin
+        p2 = subprocess.run(
+            ["bsdtar", "-x", "-O", "-f", "-", "control"],
+            stdin=p1.stdout,
+            capture_output=True,
+        )
+        if p2.returncode != 0 or not p2.stdout:
+            # retry with ./control variant
+            p1.terminate()
+            p1 = subprocess.Popen(
+                ["bsdtar", "-O", "-xf", deb_path, ctrl], stdout=subprocess.PIPE
+            )
+            p2 = subprocess.run(
+                ["bsdtar", "-x", "-O", "-f", "-", "./control"],
+                stdin=p1.stdout,
+                capture_output=True,
+            )
+        if p2.returncode != 0 or not p2.stdout:
+            raise ValueError(f"control extract failed: {p2.stderr.decode()[:200]}")
+        return p2.stdout.decode("utf-8", "replace")
+    finally:
+        try:
+            p1.stdout.close()
+        except Exception:
+            pass
+        p1.wait()
 
 
 def parse_control(text):
