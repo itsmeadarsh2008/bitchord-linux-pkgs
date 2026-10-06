@@ -57,6 +57,8 @@ jobs:
             rm -f bitchord.db.tar.zst bitchord.files.tar.zst
             rm -f bitchord.db bitchord.files
             repo-add bitchord.db.tar.zst *.pkg.tar.zst
+            cp -f bitchord.db.tar.zst bitchord.db
+            cp -f bitchord.files.tar.zst bitchord.files
           '
           ls -lh out/
 
@@ -79,5 +81,7 @@ jobs:
           files: |
             out/*.pkg.tar.zst
             out/bitchord.db.tar.zst
+            out/bitchord.db
             out/bitchord.files.tar.zst
+            out/bitchord.files
           fail_on_unmatched_files: true
