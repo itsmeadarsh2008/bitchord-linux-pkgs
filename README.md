@@ -14,9 +14,9 @@ Preview first: replace `--yes` with `--check`. Pin a version: add `--version 1.8
 | Distro | What it does | Updates via |
 |---|---|---|
 | Arch / CachyOS / EndeavourOS / Manjaro | adds `[bitchord]` pacman repo, installs `bitchord-bin` | `paru -Syu` / Cachy-Update one-click |
-| Debian / Ubuntu / Mint / Pop!_OS | downloads upstream `.deb`, `apt install` | `apt upgrade` once upstream releases (re-run script for new major) |
-| Fedora / RHEL / Rocky / Alma | downloads upstream `.rpm`, `dnf install` | `dnf upgrade` (re-run script for new major) |
-| openSUSE | downloads upstream `.rpm`, `zypper install` | `zypper dup` (re-run script for new major) |
+| Debian / Ubuntu / Mint / Pop!_OS | adds `bitchord.sources` flat APT repo, installs from it | `apt upgrade` |
+| Fedora / RHEL / Rocky / Alma | adds `bitchord.repo` YUM repo, installs from it | `dnf upgrade` |
+| openSUSE | adds `bitchord.repo` YUM repo, installs from it | `zypper dup` |
 | Anything else | upstream `.AppImage` → `~/.local/bin` + desktop entry | re-run script |
 
 ## Arch details (one-click in Cachy-Update afterwards)
@@ -51,11 +51,16 @@ Click Update = updated.
 
 1. Checks `api.github.com/repos/kushagrasinghx/BitChord/releases/latest`
 2. If tag != `pkgver` in `PKGBUILD`, bumps `pkgver`, resets `pkgrel=1`, runs `updpkgsums`
-3. Regenerates `.SRCINFO`, builds with `makepkg --nodeps` (repack of official `.deb`, no compile, `!debug`)
-4. `repo-add` into `bitchord.db.tar.zst`
-5. Uploads `*.pkg.tar.zst + bitchord.db*` to floating `current` Release (keeps only latest — each build is ~300MB, over git/Pages 100MB limit, under Releases 2GB limit)
+3. Regenerates `.SRCINFO`, builds Arch package with `makepkg --nodeps` (repack of official `.deb`, no compile, `!debug`)
+4. `repo-add` → `bitchord.db*`; `tools/mkapt.py` → APT `Packages`/`Release`; `createrepo_c --location-prefix <current-release-URL>` → YUM `repodata`
+5. Uploads everything to floating `current` Release (binaries ~300MB each — over git/Pages 100MB limit, under Releases 2GB limit); deploys only tiny YUM `repodata` to Pages
 
 Trigger manually: Actions tab → `repo` → Run workflow.
+
+## Repo files (consumed by `install.sh`)
+
+- `bitchord.sources` — deb822 APT source, `Suites: ./`, `Trusted: yes` (flat repo on the `current` Release)
+- `bitchord.repo` — YUM repo, `baseurl` = Pages-hosted `repodata`, RPMs via absolute URLs
 
 ## Files
 

@@ -1,0 +1,6 @@
+[bitchord]
+name=BitChord (bitchord-linux-pkgs)
+baseurl=https://itsmeadarsh2008.github.io/bitchord-linux-pkgs/yum
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0

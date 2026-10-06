@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current/
+Suites: ./
+Components:
+Trusted: yes

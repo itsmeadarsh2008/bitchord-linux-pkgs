@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Universal BitChord installer for Linux.
-# Arch/CachyOS -> pacman repo (this repo's `current` release, Cachy-Update compatible)
-# Debian/Ubuntu -> upstream .deb | Fedora/RHEL -> upstream .rpm
-# openSUSE -> upstream .rpm via zypper | everything else -> upstream AppImage
+# Universal BitChord installer for Linux — repo-based everywhere, so every
+# distro family gets real auto-updates (apt upgrade / dnf upgrade / paru -Syu).
+# Arch/CachyOS -> pacman repo | Debian/Ubuntu -> flat APT repo
+# Fedora/RHEL/openSUSE -> YUM repo | everything else -> upstream AppImage
 set -euo pipefail
 
 UPSTREAM_REPO="kushagrasinghx/BitChord"
+PKG_REPO="itsmeadarsh2008/bitchord-linux-pkgs"
 REPO_ID="bitchord"
-REPO_SERVER="https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current"
+REPO_SERVER="https://github.com/${PKG_REPO}/releases/download/current"
+REPO_RAW="https://raw.githubusercontent.com/${PKG_REPO}/main"
+YUM_BASEURL="https://itsmeadarsh2008.github.io/bitchord-linux-pkgs/yum"
 PKG="bitchord-bin"
 APPIMAGE_NAME="BitChord.AppImage"
 
@@ -63,10 +66,10 @@ if [ "$CHECK" = 1 ]; then
   echo "rpm: ${RPM_URL:-n/a}"
   echo "appimage: ${APPIMAGE_URL:-n/a}"
   case "$FAMILY" in
-    *arch*) echo "plan: pacman repo [$REPO_ID] -> $PKG" ;;
-    *debian*|*ubuntu*) echo "plan: apt install upstream .deb" ;;
-    *fedora*|*rhel*|*centos*|*rocky*|*alma*) echo "plan: dnf install upstream .rpm" ;;
-    *suse*|*opensuse*) echo "plan: zypper install upstream .rpm" ;;
+    *arch*) echo "plan: pacman repo [$REPO_ID] -> $PKG (auto-updates via paru -Syu)" ;;
+    *debian*|*ubuntu*) echo "plan: APT repo [$REPO_ID] -> bitchord (auto-updates via apt upgrade)" ;;
+    *fedora*|*rhel*|*centos*|*rocky*|*alma*) echo "plan: YUM repo [$REPO_ID] (auto-updates via dnf upgrade)" ;;
+    *suse*|*opensuse*) echo "plan: YUM repo [$REPO_ID] (auto-updates via zypper dup)" ;;
     *) echo "plan: AppImage -> ~/.local/bin/$APPIMAGE_NAME" ;;
   esac
   exit 0
@@ -89,28 +92,23 @@ case "$FAMILY" in
     fi
     ;;
   *debian*|*ubuntu*)
-    need apt-get || { echo "apt not found" >&2; exit 1; }
-    tmp=$(mktemp /tmp/bitchord-XXXXXX.deb)
-    trap 'rm -f "$tmp"' EXIT
-    curl -fL -o "$tmp" "$DEB_URL"
-    [ "$ASSUME_YES" = 1 ] && $SUDO apt-get install -y "$tmp" || $SUDO apt install "$tmp"
+    for t in apt-get dpkg-deb; do need "$t"; done
+    curl -fsSL "${REPO_RAW}/bitchord.sources" | $SUDO tee /etc/apt/sources.list.d/bitchord.sources >/dev/null
+    $SUDO apt-get update
+    # exact package name comes from our own Packages metadata (generated from the real .deb)
+    DEB_PKG=$(curl -fsSL "${REPO_SERVER}/Packages" | grep -m1 '^Package:' | cut -d' ' -f2)
+    [ "$ASSUME_YES" = 1 ] && $SUDO apt-get install -y "$DEB_PKG" || $SUDO apt-get install "$DEB_PKG"
     ;;
-  *fedora*|*rhel*|*centos*|*rocky*|*alma*)
-    tmp=$(mktemp /tmp/bitchord-XXXXXX.rpm)
-    trap 'rm -f "$tmp"' EXIT
-    curl -fL -o "$tmp" "$RPM_URL"
+  *fedora*|*rhel*|*centos*|*rocky*|*alma*|*suse*|*opensuse*)
+    curl -fsSL "${REPO_RAW}/bitchord.repo" | $SUDO tee /etc/yum.repos.d/bitchord.repo >/dev/null
     if command -v dnf >/dev/null 2>&1; then
-      [ "$ASSUME_YES" = 1 ] && $SUDO dnf install -y "$tmp" || $SUDO dnf install "$tmp"
+      [ "$ASSUME_YES" = 1 ] && $SUDO dnf install -y bitchord || $SUDO dnf install bitchord
+    elif command -v zypper >/dev/null 2>&1; then
+      [ "$ASSUME_YES" = 1 ] && $SUDO zypper --non-interactive install bitchord || $SUDO zypper install bitchord
     else
-      [ "$ASSUME_YES" = 1 ] && $SUDO yum install -y "$tmp" || $SUDO yum install "$tmp"
+      [ "$ASSUME_YES" = 1 ] && $SUDO yum install -y bitchord || $SUDO yum install bitchord
     fi
-    ;;
-  *suse*|*opensuse*)
-    tmp=$(mktemp /tmp/bitchord-XXXXXX.rpm)
-    trap 'rm -f "$tmp"' EXIT
-    curl -fL -o "$tmp" "$RPM_URL"
-    [ "$ASSUME_YES" = 1 ] && $SUDO zypper --non-interactive install "$tmp" || $SUDO zypper install "$tmp"
-    ;;
+    ;; 
   *)
     dest="${HOME}/.local/bin/${APPIMAGE_NAME}"
     mkdir -p "$(dirname "$dest")"

@@ -6,6 +6,7 @@ on:
     paths:
       - "PKGBUILD"
       - "bitchord.desktop"
+      - "tools/mkapt.py"
       - ".github/workflows/repo.yml"
 
 permissions:
@@ -20,9 +21,22 @@ jobs:
 
       - name: Install deps + builder user
         run: |
-          pacman -Sy --noconfirm jq git
+          pacman -Sy --noconfirm jq git createrepo_c python
           id builder &>/dev/null || useradd -m builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Resolve upstream native assets
+        id: native
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/kushagrasinghx/BitChord/releases/latest | jq -r .tag_name)
+          VER="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "deb_name=BitChord-${VER}-linux-amd64.deb" >> "$GITHUB_OUTPUT"
+          echo "rpm_name=BitChord-${VER}-linux-x86_64.rpm" >> "$GITHUB_OUTPUT"
+          echo "deb_url=https://github.com/kushagrasinghx/BitChord/releases/download/${TAG}/BitChord-${VER}-linux-amd64.deb" >> "$GITHUB_OUTPUT"
+          echo "rpm_url=https://github.com/kushagrasinghx/BitChord/releases/download/${TAG}/BitChord-${VER}-linux-x86_64.rpm" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $TAG"
 
       - name: Check upstream version
         id: ver
@@ -72,18 +86,47 @@ jobs:
           file_pattern: "PKGBUILD .SRCINFO"
 
       # Packages are ~300MB — over GitHub's 100MB git/Pages file limit,
-      # so host the repo DB + pkg as a floating `current` Release (2GB limit).
+      # so binaries + pacman DB go to a floating `current` Release (2GB limit).
       # pacman Server below points at .../releases/download/current/
-      - name: Publish repo to floating `current` release
+      # APT uses the same Release as a flat repo (Packages + .deb side by side).
+      # YUM repodata is tiny text -> gh-pages; RPMs stay on the Release via
+      # createrepo_c --location-prefix (absolute URLs in primary.xml).
+      - name: Build APT flat repo + YUM repodata
+        run: |
+          su builder -c '
+            set -e
+            mkdir -p native apt yum pages-out/yum
+            curl -fL -o "native/${{ steps.native.outputs.deb_name }}" "${{ steps.native.outputs.deb_url }}"
+            curl -fL -o "native/${{ steps.native.outputs.rpm_name }}" "${{ steps.native.outputs.rpm_url }}"
+            cp native/*.deb apt/
+            python3 tools/mkapt.py native apt
+            cp native/*.rpm yum/
+            createrepo_c --location-prefix "https://github.com/${{ github.repository }}/releases/download/current" yum
+            cp -r yum/repodata pages-out/yum/
+          '
+          ls -lh apt/ yum/repodata/
+      - name: Publish repos to floating `current` release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: current
           name: "current repo"
-          body: "Rolling pacman repo. Do not use manually — add Server = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current to pacman.conf"
+          body: "Rolling repo for BitChord Linux.\n- Arch: Server = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current (pacman)\n- Debian/Ubuntu: deb822 Suites ./, URIs = same URL, Trusted yes (flat APT repo)\n- Fedora/RHEL/openSUSE: baseurl = https://itsmeadarsh2008.github.io/bitchord-linux-pkgs/yum (repodata on Pages, RPMs via absolute URLs)"
           files: |
             out/*.pkg.tar.zst
             out/bitchord.db.tar.zst
             out/bitchord.db
             out/bitchord.files.tar.zst
             out/bitchord.files
+            native/*.deb
+            native/*.rpm
+            apt/Packages
+            apt/Packages.gz
+            apt/Release
           fail_on_unmatched_files: true
+
+      - name: Deploy YUM repodata to Pages (tiny XML only)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pages-out
+          keep_files: true
