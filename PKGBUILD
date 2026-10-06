@@ -9,6 +9,7 @@ license=('GPL-3.0-only')
 depends=('gtk3' 'alsa-lib' 'libxtst' 'libxxf86vm' 'glib2' 'hicolor-icon-theme' 'xdg-utils' 'freetype2' 'libx11')
 provides=('bitchord')
 conflicts=('bitchord')
+options=('!debug')
 source=("BitChord-${pkgver}-linux-amd64.deb::https://github.com/kushagrasinghx/BitChord/releases/download/v${pkgver}/BitChord-${pkgver}-linux-amd64.deb")
 sha256sums=('b5ac5b568015720ada47f378263e83c7dd6d8232d95fc26ddeb4bd1651db1a54')
 

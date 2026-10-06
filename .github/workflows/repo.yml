@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
 
 jobs:
   build:
@@ -48,18 +47,18 @@ jobs:
             echo "Already current, rebuilding repo DB from existing PKGBUILD."
           fi
 
-      - name: Build package + repo DB
+      - name: Build package + repo DB (no debug pkg)
         run: |
           su builder -c '
             makepkg --noconfirm --nodeps
-            mkdir -p out/x86_64
-            cp -f *.pkg.tar.zst out/x86_64/
-            cd out/x86_64
+            mkdir -p out
+            cp -f *.pkg.tar.zst out/
+            cd out
             rm -f bitchord.db.tar.zst bitchord.files.tar.zst
             rm -f bitchord.db bitchord.files
             repo-add bitchord.db.tar.zst *.pkg.tar.zst
           '
-          ls -lh out/x86_64/
+          ls -lh out/
 
       - name: Commit bumped PKGBUILD
         if: env.BUMPED == '1'
@@ -68,9 +67,17 @@ jobs:
           commit_message: "bump to v${{ steps.ver.outputs.latest }}"
           file_pattern: "PKGBUILD .SRCINFO"
 
-      - name: Deploy to Pages (gh-pages)
-        uses: peaceiris/actions-gh-pages@v4
+      # Packages are ~300MB — over GitHub's 100MB git/Pages file limit,
+      # so host the repo DB + pkg as a floating `current` Release (2GB limit).
+      # pacman Server below points at .../releases/download/current/
+      - name: Publish repo to floating `current` release
+        uses: softprops/action-gh-release@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
-          keep_files: false
+          tag_name: current
+          name: "current repo"
+          body: "Rolling pacman repo. Do not use manually — add Server = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current to pacman.conf"
+          files: |
+            out/*.pkg.tar.zst
+            out/bitchord.db.tar.zst
+            out/bitchord.files.tar.zst
+          fail_on_unmatched_files: true

@@ -16,6 +16,7 @@ pkgbase = bitchord-bin
 	depends = libx11
 	provides = bitchord
 	conflicts = bitchord
+	options = !debug
 	source = BitChord-1.8-linux-amd64.deb::https://github.com/kushagrasinghx/BitChord/releases/download/v1.8/BitChord-1.8-linux-amd64.deb
 	sha256sums = b5ac5b568015720ada47f378263e83c7dd6d8232d95fc26ddeb4bd1651db1a54
 

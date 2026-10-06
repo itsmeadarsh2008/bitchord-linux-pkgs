@@ -1,7 +1,7 @@
 # bitchord-linux-pkgs
 
 Serverless pacman repo for [BitChord](https://github.com/kushagrasinghx/BitChord) on Arch / CachyOS.
-No VPS — GitHub Actions builds, GitHub Pages hosts. Chaotic-AUR style, minimal.
+No VPS — GitHub Actions builds, GitHub Releases hosts the binary repo. Chaotic-AUR style, minimal.
 
 ## Use it (one-click in Cachy-Update afterwards)
 
@@ -10,7 +10,7 @@ Add to `/etc/pacman.conf`:
 ```ini
 [bitchord]
 SigLevel = Optional TrustAll
-Server = https://itsmeadarsh2008.github.io/bitchord-linux-pkgs/x86_64
+Server = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current
 ```
 
 Then:
@@ -29,9 +29,9 @@ Click Update = updated. No AUR helper needed for this package.
 
 1. Checks `api.github.com/repos/kushagrasinghx/BitChord/releases/latest`
 2. If tag != `pkgver` in `PKGBUILD`, bumps `pkgver`, resets `pkgrel=1`, runs `updpkgsums`
-3. Regenerates `.SRCINFO`, builds with `makepkg --nodeps` (repack of official `.deb`, no compile)
-4. `repo-add` into `out/x86_64/bitchord.db.tar.zst`
-5. Deploys `out/` to `gh-pages` (keeps only latest — each build is ~300MB)
+3. Regenerates `.SRCINFO`, builds with `makepkg --nodeps` (repack of official `.deb`, no compile, `!debug`)
+4. `repo-add` into `bitchord.db.tar.zst`
+5. Uploads `*.pkg.tar.zst + bitchord.db*` to floating `current` Release (keeps only latest — each build is ~300MB, over git/Pages 100MB limit, under Releases 2GB limit)
 
 Trigger manually: Actions tab → `repo` → Run workflow.
 
