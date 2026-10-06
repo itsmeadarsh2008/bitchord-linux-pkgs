@@ -57,6 +57,7 @@ jobs:
             rm -f bitchord.db.tar.zst bitchord.files.tar.zst
             rm -f bitchord.db bitchord.files
             repo-add bitchord.db.tar.zst *.pkg.tar.zst
+            rm -f bitchord.db bitchord.files
             cp -f bitchord.db.tar.zst bitchord.db
             cp -f bitchord.files.tar.zst bitchord.files
           '
