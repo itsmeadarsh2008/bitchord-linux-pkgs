@@ -5,7 +5,13 @@ No VPS — GitHub Actions builds, GitHub Releases hosts the binary repo. Chaotic
 
 ## Use it (one-click in Cachy-Update afterwards)
 
-Add to `/etc/pacman.conf`:
+One-liner (adds repo if missing, syncs):
+
+```bash
+grep -q "^\[bitchord\]" /etc/pacman.conf || printf '\n[bitchord]\nSigLevel = Optional TrustAll\nServer = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current\n' | sudo tee -a /etc/pacman.conf >/dev/null && paru -Sy
+```
+
+Or manually, add to `/etc/pacman.conf`:
 
 ```ini
 [bitchord]
@@ -13,15 +19,15 @@ SigLevel = Optional TrustAll
 Server = https://github.com/itsmeadarsh2008/bitchord-linux-pkgs/releases/download/current
 ```
 
-Then:
+Install / update with `paru`:
 
 ```bash
-sudo pacman -Sy
-sudo pacman -S bitchord-bin
+paru -Sy bitchord-bin
+paru -Syu # regular updates, also picked up by Cachy-Update
 ```
 
-After that, Cachy-Update (`checkupdates` + `pacman -Syu`) lists updates automatically.
-Click Update = updated. No AUR helper needed for this package.
+After that, Cachy-Update (`checkupdates` + `paru -Syu`) lists updates automatically.
+Click Update = updated.
 
 ## How it updates
 
