@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=BitChord
+Comment=Modern YouTube Music client with Apple Music-inspired aesthetics
+Exec=/opt/bitchord/bin/BitChord
+Icon=bitchord
+Categories=AudioVideo;Audio;Player;Music;
+Terminal=false
+StartupWMClass=BitChord

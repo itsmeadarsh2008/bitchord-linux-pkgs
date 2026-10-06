@@ -1,7 +1,7 @@
 pkgbase = bitchord-bin
 	pkgdesc = Modern YouTube Music client with Apple Music-inspired aesthetics (desktop beta)
 	pkgver = 1.8
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/kushagrasinghx/BitChord
 	arch = x86_64
 	license = GPL-3.0-only
@@ -18,6 +18,8 @@ pkgbase = bitchord-bin
 	conflicts = bitchord
 	options = !debug
 	source = BitChord-1.8-linux-amd64.deb::https://github.com/kushagrasinghx/BitChord/releases/download/v1.8/BitChord-1.8-linux-amd64.deb
+	source = bitchord.desktop
 	sha256sums = b5ac5b568015720ada47f378263e83c7dd6d8232d95fc26ddeb4bd1651db1a54
+	sha256sums = SKIP
 
 pkgname = bitchord-bin

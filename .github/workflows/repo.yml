@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "PKGBUILD"
+      - "bitchord.desktop"
       - ".github/workflows/repo.yml"
 
 permissions:
