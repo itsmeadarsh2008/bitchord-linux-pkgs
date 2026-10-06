@@ -1,0 +1,76 @@
+name: repo
+on:
+  schedule: [{cron: "0 6 * * *"}]
+  workflow_dispatch:
+  push:
+    paths:
+      - "PKGBUILD"
+      - ".github/workflows/repo.yml"
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps + builder user
+        run: |
+          pacman -Sy --noconfirm jq git
+          id builder &>/dev/null || useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Check upstream version
+        id: ver
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/kushagrasinghx/BitChord/releases/latest | jq -r .tag_name | sed 's/^v//')
+          CURRENT=$(grep -oP '^pkgver=\K.*' PKGBUILD | tr -d ' ')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "Upstream: $LATEST / PKGBUILD: $CURRENT"
+
+      - name: Bump PKGBUILD if needed
+        run: |
+          LATEST="${{ steps.ver.outputs.latest }}"
+          CURRENT="${{ steps.ver.outputs.current }}"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            su builder -c "
+              sed -i \"s/^pkgver=.*/pkgver=$LATEST/; s/^pkgrel=.*/pkgrel=1/\" PKGBUILD
+              updpkgsums
+              makepkg --printsrcinfo > .SRCINFO
+            "
+            echo "BUMPED=1" >> "$GITHUB_ENV"
+          else
+            echo "Already current, rebuilding repo DB from existing PKGBUILD."
+          fi
+
+      - name: Build package + repo DB
+        run: |
+          su builder -c '
+            makepkg --noconfirm --nodeps
+            mkdir -p out/x86_64
+            cp -f *.pkg.tar.zst out/x86_64/
+            cd out/x86_64
+            rm -f bitchord.db.tar.zst bitchord.files.tar.zst
+            rm -f bitchord.db bitchord.files
+            repo-add bitchord.db.tar.zst *.pkg.tar.zst
+          '
+          ls -lh out/x86_64/
+
+      - name: Commit bumped PKGBUILD
+        if: env.BUMPED == '1'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "bump to v${{ steps.ver.outputs.latest }}"
+          file_pattern: "PKGBUILD .SRCINFO"
+
+      - name: Deploy to Pages (gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          keep_files: false
