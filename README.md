@@ -1,9 +1,25 @@
 # bitchord-linux-pkgs
 
-Serverless pacman repo for [BitChord](https://github.com/kushagrasinghx/BitChord) on Arch / CachyOS.
+Universal Linux installer + serverless pacman repo for [BitChord](https://github.com/kushagrasinghx/BitChord).
 No VPS — GitHub Actions builds, GitHub Releases hosts the binary repo. Chaotic-AUR style, minimal.
 
-## Use it (one-click in Cachy-Update afterwards)
+## Universal install (any distro)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itsmeadarsh2008/bitchord-linux-pkgs/main/install.sh | bash -s -- --yes
+```
+
+Preview first: replace `--yes` with `--check`. Pin a version: add `--version 1.8`.
+
+| Distro | What it does | Updates via |
+|---|---|---|
+| Arch / CachyOS / EndeavourOS / Manjaro | adds `[bitchord]` pacman repo, installs `bitchord-bin` | `paru -Syu` / Cachy-Update one-click |
+| Debian / Ubuntu / Mint / Pop!_OS | downloads upstream `.deb`, `apt install` | `apt upgrade` once upstream releases (re-run script for new major) |
+| Fedora / RHEL / Rocky / Alma | downloads upstream `.rpm`, `dnf install` | `dnf upgrade` (re-run script for new major) |
+| openSUSE | downloads upstream `.rpm`, `zypper install` | `zypper dup` (re-run script for new major) |
+| Anything else | upstream `.AppImage` → `~/.local/bin` + desktop entry | re-run script |
+
+## Arch details (one-click in Cachy-Update afterwards)
 
 One-liner (adds repo if missing, syncs):
 
